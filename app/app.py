@@ -179,8 +179,8 @@ def serve_video(filename):
     # Stream the file to the client
     return Response(open(video_path, 'rb').read(), content_type='video/mp4')
 
-def run_reinforcement(lstm_model, temporal_keypoints, true_label, TEMPORAL_WINDOW=32):
-    def run_reinforcement(video_path):
+
+def run_reinforcement(video_path):
     """Reinforce model using the opposite of the predicted class as feedback."""
     global lstm_model
     cap = cv2.VideoCapture(video_path)
