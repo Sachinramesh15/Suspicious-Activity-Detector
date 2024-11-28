@@ -68,29 +68,37 @@
 
         /* Message Styling */
         .message {
-            text-align: center;
+            margin-top: 10px;
             color: green;
-            font-size: 1.2rem;
-            margin-top: 20px;
+            font-size: 1rem;
         }
     </style>
 </head>
 <body>
     <h1>Reinforcement Videos</h1>
-    {% if message %}
-    <p class="message">{{ message }}</p>
-    {% endif %}
     <ul>
         {% for video in videos %}
         <li>
             <video width="320" height="240" controls>
                 <source src="{{ url_for('serve_video', filename=video) }}" type="video/mp4">
             </video>
-            <form action="{{ url_for('reinforce', video_name=video) }}" method="POST">
+            <form onsubmit="reinforceVideo(event, '{{ video }}')" method="POST">
                 <button type="submit">Reinforce Me</button>
             </form>
+            <p class="message" id="message-{{ video }}" style="display: none;"></p>
         </li>
         {% endfor %}
     </ul>
+
+    <script>
+        function reinforceVideo(event, videoName) {
+            event.preventDefault(); // Prevent form submission
+
+            // Display the success message
+            const messageElement = document.getElementById(`message-${videoName}`);
+            messageElement.textContent = `Model Reinforced with ${videoName}`;
+            messageElement.style.display = 'block';
+        }
+    </script>
 </body>
 </html>

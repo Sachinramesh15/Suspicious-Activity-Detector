@@ -38,20 +38,21 @@ def generate_camera_feed():
     """Capture, process, and stream camera feed."""
     global temporal_keypoints, video_files_list
 
-    # Define video writer
-    fourcc = cv2.VideoWriter_fourcc(*'mp4v')  # Use 'mp4v' codec for .mp4
-    current_video_path = os.path.join(VIDEO_DIR, f"video_{int(time.time())}.mp4")  # Save as .mp4
-    out = cv2.VideoWriter(current_video_path, fourcc, fps, (640, 480))
+    # Define video writer codec
+    fourcc = cv2.VideoWriter_fourcc(*'vp09')  
+    fps = 30  # Define frames per second for video recording
+    frame_size = (640, 480)  # Frame resolution
 
-    start_time = time.time()
+    # Initialize the first video writer
+    current_video_path = os.path.join(VIDEO_DIR, f"video_{int(time.time())}.webm")  
+    out = cv2.VideoWriter(current_video_path, fourcc, fps, frame_size)
+
+    start_time = time.time()  # Track the start time for video clipping
 
     while True:
         ret, frame = camera.read()
         if not ret:
             break
-
-        # Save the frame to the current video file every frame
-        out.write(frame)
 
         # Process frame with YOLO
         results = yolo_model(frame, verbose=False)
@@ -70,22 +71,31 @@ def generate_camera_feed():
                         input_data = np.array(temporal_keypoints[-TEMPORAL_WINDOW:]).flatten()
                         input_data = input_data.reshape(1, TEMPORAL_WINDOW, -1)
                         prediction = lstm_model.predict(input_data, verbose=False)
+                        #print(prediction)
                         predicted_class = "normal" if np.argmax(prediction) == 1 else "suspicious"
 
                         # Set color based on prediction
                         color = (0, 255, 0) if predicted_class == "normal" else (0, 0, 255)
 
-                        # Draw bounding box and label
+                        # Draw bounding box and label on the frame
                         label = f"{predicted_class} ({prediction[0][np.argmax(prediction)]:.2f})"
                         cv2.rectangle(frame, (x1, y1), (x2, y2), color, 2)
                         cv2.putText(frame, label, (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.6, color, 2)
 
+        # Write the annotated frame to the video file
+        out.write(frame)
+
         # Check if 2 minutes have passed (120 seconds)
         if time.time() - start_time >= 120:
-            start_time = time.time()  # Reset the timer
-            current_video_path = os.path.join(VIDEO_DIR, f"video_{int(time.time())}.avi")
-            out.release()  # Release the old video writer
-            out = cv2.VideoWriter(current_video_path, fourcc, fps, (640, 480))  # Start a new one
+            # Reset the timer
+            start_time = time.time()
+
+            # Finalize the current video file
+            out.release()
+
+            # Start a new video writer
+            current_video_path = os.path.join(VIDEO_DIR, f"video_{int(time.time())}.webm")
+            out = cv2.VideoWriter(current_video_path, fourcc, fps, frame_size)
 
             # Add the new video to the list of videos
             video_files_list.append(current_video_path)
@@ -101,7 +111,10 @@ def generate_camera_feed():
         frame_bytes = buffer.tobytes()
         yield (b'--frame\r\nContent-Type: image/jpeg\r\n\r\n' + frame_bytes + b'\r\n')
 
-    out.release()  # Ensure to release the video writer when the loop ends
+    # Release the video writer when the loop ends
+    out.release()
+
+
 
 
 @app.route('/video_feed')
@@ -117,7 +130,7 @@ def reinforcement_page():
     # Fetch the list of video files from the directory
     videos = [
         video for video in os.listdir(VIDEO_DIR)
-        if video.endswith((".mp4", ".avi"))
+        if video.endswith((".webm", ".avi"))
     ]
 
     # Sort videos by modification time to show the most recent first
@@ -134,17 +147,40 @@ def reinforcement_page():
 def reinforce(video_name):
     """Run reinforcement learning on the selected video."""
     video_path = os.path.join(VIDEO_DIR, video_name)
-    run_reinforcement(video_path)
-    
-    # Return a confirmation message after reinforcement
-    return redirect(url_for('reinforcement_page', message=f"Model Reinforced with {video_name}"))
+
+    # Check if the file exists
+    if not os.path.exists(video_path):
+        return "Error: Video file not found.", 404
+
+    try:
+        # Call the reinforcement function and handle errors
+        run_reinforcement(video_path)
+        return redirect(url_for('reinforcement_page', message=f"Model Reinforced with {video_name}"))
+    except Exception as e:
+        # Log the error and return an error response
+        app.logger.error(f"Error during reinforcement: {e}")
+        return f"Error during reinforcement: {e}", 500
+
+
+def stream_file(file_path):
+    with open(file_path, 'rb') as f:
+        while chunk := f.read(8192):  # Read in chunks of 8 KB
+            yield chunk
 
 @app.route('/serve_video/<filename>')
 def serve_video(filename):
-    """Serve video files."""
-    return send_from_directory(VIDEO_DIR, filename)
+    """Stream video files with a 200 OK response."""
+    video_path = os.path.join(VIDEO_DIR, filename)
 
-def run_reinforcement(video_path):
+    # Check if the file exists
+    if not os.path.exists(video_path):
+        return "File not found", 404
+
+    # Stream the file to the client
+    return Response(open(video_path, 'rb').read(), content_type='video/mp4')
+
+def run_reinforcement(lstm_model, temporal_keypoints, true_label, TEMPORAL_WINDOW=32):
+    def run_reinforcement(video_path):
     """Reinforce model using the opposite of the predicted class as feedback."""
     global lstm_model
     cap = cv2.VideoCapture(video_path)
