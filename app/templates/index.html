@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Suspicious Activity Detector</title>
+    <style>
+        /* General Reset */
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f9;
+            color: #333;
+        }
+
+        /* Header Styling */
+        h1 {
+            text-align: center;
+            background-color: #4CAF50;
+            color: white;
+            padding: 20px 0;
+            margin: 0;
+        }
+
+        /* Section Styling */
+        div {
+            margin: 20px auto;
+            width: 80%;
+            max-width: 800px;
+            text-align: center;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            border-radius: 8px;
+            background-color: white;
+            padding: 20px;
+        }
+
+        h2 {
+            margin-top: 0;
+            font-size: 1.5rem;
+        }
+
+        /* Image Styling */
+        img {
+            width: 100%;
+            max-width: 600px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        /* Button Styling */
+        button {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            font-size: 1rem;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+
+        button:hover {
+            background-color: #45a049;
+        }
+
+        /* Link Styling */
+        a {
+            text-decoration: none;
+        }
+    </style>
+</head>
+<body>
+    <h1>Suspicious Activity Detector</h1>
+    <div>
+        <h2>Live Camera Feed</h2>
+        <img src="{{ url_for('video_feed') }}" alt="Live Feed">
+    </div>
+    <div>
+        <a href="{{ url_for('reinforcement_page') }}">
+            <button>Take me to Reinforcement Page</button>
+        </a>
+    </div>
+</body>
+</html>
